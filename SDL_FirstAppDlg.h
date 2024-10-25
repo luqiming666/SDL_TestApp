@@ -4,7 +4,9 @@
 
 #pragma once
 
-struct AudioPlaybackData {
+struct AudioPlaybackData 
+{
+	void* owner;
 	uint8_t* audio_buf;
 	uint32_t audio_buf_len;
 	uint32_t audio_played_len;
@@ -14,6 +16,9 @@ struct AudioPlaybackData {
 	}
 
 	bool isCompleted() { return (audio_played_len >= audio_buf_len); }
+	bool isPlaying() {
+		return (audio_played_len > 0 && audio_played_len < audio_buf_len);
+	}
 };
 
 // CSDLFirstAppDlg 对话框
@@ -49,8 +54,10 @@ protected:
 
 public:
 	afx_msg void OnDestroy();
+	afx_msg LRESULT OnMsgAudioPlaybackDone(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnBnClickedButtonCreateWnd();
 	afx_msg void OnBnClickedButtonBrowse();
 	afx_msg void OnBnClickedButtonShowPic();
 	afx_msg void OnBnClickedButtonPlayAudio();
+	afx_msg void OnBnClickedButtonStopAudio();
 };

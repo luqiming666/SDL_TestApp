@@ -13,6 +13,8 @@
 #define IDC_BUTTON_BROWSE               1003
 #define IDC_BUTTON_SHOW_PIC             1004
 #define IDC_BUTTON_PLAY_AUDIO           1005
+#define IDC_BUTTON_PLAY_AUDIO2          1006
+#define IDC_BUTTON_STOP_AUDIO           1006
 
 // Next default values for new objects
 // 

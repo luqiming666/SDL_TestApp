@@ -12,6 +12,8 @@
 #include "SDL.h"
 #include "audiotest.h"
 
+#define WM_AUDIO_PLAY_DONE   (WM_USER+100)
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -74,6 +76,8 @@ BEGIN_MESSAGE_MAP(CSDLFirstAppDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE, &CSDLFirstAppDlg::OnBnClickedButtonBrowse)
 	ON_BN_CLICKED(IDC_BUTTON_SHOW_PIC, &CSDLFirstAppDlg::OnBnClickedButtonShowPic)
 	ON_BN_CLICKED(IDC_BUTTON_PLAY_AUDIO, &CSDLFirstAppDlg::OnBnClickedButtonPlayAudio)
+	ON_MESSAGE(WM_AUDIO_PLAY_DONE, OnMsgAudioPlaybackDone)
+	ON_BN_CLICKED(IDC_BUTTON_STOP_AUDIO, &CSDLFirstAppDlg::OnBnClickedButtonStopAudio)
 END_MESSAGE_MAP()
 
 
@@ -184,15 +188,20 @@ void CSDLFirstAppDlg::OnDestroy()
 
 void CSDLFirstAppDlg::OnBnClickedButtonBrowse()
 {
+	static int lastFilterIndex = 0; // 记住上次用的过滤器
+
 	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
 		_T("Video Files|*.mp4;*.mpg;*.avi;*.wmv;*.mov|\
 		Audio Files|*.wav|\
 		Image Files|*.bmp|\
 		All Files (*.*)|*.*||"),
 		NULL);
+	fileDlg.m_ofn.nFilterIndex = lastFilterIndex;
 	if (fileDlg.DoModal() == IDOK)
 	{
 		mSrcFile = fileDlg.GetPathName();
+		lastFilterIndex = fileDlg.m_ofn.nFilterIndex;
+
 		UpdateData(FALSE);
 	}
 }
@@ -234,7 +243,11 @@ void CSDLFirstAppDlg::OnBnClickedButtonCreateWnd()
 void audio_callback(void* userdata, Uint8* stream, int len) 
 {
 	AudioPlaybackData* pData = (AudioPlaybackData*)userdata;
-	if (pData->isCompleted()) return;
+	if (pData->isCompleted()) {
+		CWnd* pWnd = (CWnd*)pData->owner;
+		PostMessage(pWnd->GetSafeHwnd(), WM_AUDIO_PLAY_DONE, 0, 0);
+		return;
+	}
 
 	// 从音频缓冲区复制数据到播放流
 	Uint32 remaining_len = pData->audio_buf_len - pData->audio_played_len;
@@ -267,8 +280,14 @@ void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 		AfxMessageBox("Please select an audio file.");
 		return;
 	}
+	if (SDL_AUDIO_PLAYING == SDL_GetAudioStatus()) {
+		AfxMessageBox("Please wait till the current playback finishes.");
+		return;
+	}
 
 	SDL_AudioSpec audio_spec;
+	mAudioPlayData.owner = this;
+	mAudioPlayData.prepare();
 	if (SDL_LoadWAV((LPCTSTR)mSrcFile, &audio_spec, &mAudioPlayData.audio_buf, &mAudioPlayData.audio_buf_len) == NULL) {
 		std::cout << "Failed to load audio file: " << SDL_GetError() << std::endl;
 		return;
@@ -283,13 +302,27 @@ void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 		return;
 	}
 
-	mAudioPlayData.prepare();
 	SDL_PauseAudio(0);   // 开始播放音频，0表示取消暂停
+}
 
-	// Wait till the audio playback finishes
-	// ...
-	SDL_Delay(2000);
+void CSDLFirstAppDlg::OnBnClickedButtonStopAudio()
+{
+	SDL_CloseAudio();    // 关闭音频设备
+	if (mAudioPlayData.audio_buf) {
+		SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
+		mAudioPlayData.audio_buf = 0;
+	}	
+}
+
+LRESULT CSDLFirstAppDlg::OnMsgAudioPlaybackDone(WPARAM wParam, LPARAM lParam)
+{
+	std::cout << "Audio playback done." << std::endl;
+	SDL_Delay(100);
 
 	SDL_CloseAudio();    // 关闭音频设备
 	SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
+	mAudioPlayData.audio_buf = 0;
+	return 0;
 }
+
+
