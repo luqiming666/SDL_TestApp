@@ -8,6 +8,12 @@ struct AudioPlaybackData {
 	uint8_t* audio_buf;
 	uint32_t audio_buf_len;
 	uint32_t audio_played_len;
+
+	void prepare() {
+		audio_played_len = 0;
+	}
+
+	bool isCompleted() { return (audio_played_len >= audio_buf_len); }
 };
 
 // CSDLFirstAppDlg 对话框

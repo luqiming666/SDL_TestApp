@@ -185,9 +185,9 @@ void CSDLFirstAppDlg::OnDestroy()
 void CSDLFirstAppDlg::OnBnClickedButtonBrowse()
 {
 	CFileDialog fileDlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-		_T("Video Files|*.mp4;*.mpg;*.avi;*.wmv;*.mov| \
-		Audio Files|*.mp3;*.ogg;*.wav;*.wma| \
-		Image Files|*.bmp| \
+		_T("Video Files|*.mp4;*.mpg;*.avi;*.wmv;*.mov|\
+		Audio Files|*.wav|\
+		Image Files|*.bmp|\
 		All Files (*.*)|*.*||"),
 		NULL);
 	if (fileDlg.DoModal() == IDOK)
@@ -234,8 +234,7 @@ void CSDLFirstAppDlg::OnBnClickedButtonCreateWnd()
 void audio_callback(void* userdata, Uint8* stream, int len) 
 {
 	AudioPlaybackData* pData = (AudioPlaybackData*)userdata;
-
-	if (pData->audio_played_len > pData->audio_buf_len) return;
+	if (pData->isCompleted()) return;
 
 	// 从音频缓冲区复制数据到播放流
 	Uint32 remaining_len = pData->audio_buf_len - pData->audio_played_len;
@@ -251,7 +250,7 @@ void audio_callback(void* userdata, Uint8* stream, int len)
 	pData->audio_played_len += len;
 }
 
-#define _TEST_jakebesworth_
+//#define _TEST_jakebesworth_
 // Many thanks to https://github.com/jakebesworth/Simple-SDL2-Audio
 // 注意：编译.c文件时，单独设置“属性”不要使用预编译头
 // Win10：重新定义 #define SDL_AUDIO_ALLOW_CHANGES (SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_CHANNELS_CHANGE)
@@ -263,8 +262,11 @@ void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 	return;
 #endif
 
-	mSrcFile = _T("D:\\Media\\Bomb.wav");
-	if (mSrcFile.IsEmpty()) return;
+	//mSrcFile = _T("D:\\Media\\Bomb.wav");
+	if (mSrcFile.IsEmpty()) {
+		AfxMessageBox("Please select an audio file.");
+		return;
+	}
 
 	SDL_AudioSpec audio_spec;
 	if (SDL_LoadWAV((LPCTSTR)mSrcFile, &audio_spec, &mAudioPlayData.audio_buf, &mAudioPlayData.audio_buf_len) == NULL) {
@@ -272,28 +274,21 @@ void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 		return;
 	}
 
-	SDL_AudioSpec wanted_spec;
-	wanted_spec.freq = 44100;    // 采样频率，常见的有44100Hz
-	wanted_spec.format = AUDIO_S16SYS;   // 音频格式，S16SYS表示有符号16位整数，系统字节序
-	wanted_spec.channels = 2;    // 声道数，如立体声为2
-	wanted_spec.silence = 0;     // 静音值
-	wanted_spec.samples = 1024;  // 音频缓冲区的样本数量
-	wanted_spec.callback = audio_callback; // 音频回调函数
-	wanted_spec.userdata = &mAudioPlayData; // 用户数据
-
-	if (SDL_OpenAudio(&wanted_spec, &audio_spec) < 0) {
+	audio_spec.callback = audio_callback; // 音频回调函数
+	audio_spec.userdata = &mAudioPlayData; // 用户数据
+	if (SDL_OpenAudio(&audio_spec, NULL) < 0) {
 		std::cout << "Failed to open audio device: " << SDL_GetError() << std::endl;
 		SDL_FreeWAV(mAudioPlayData.audio_buf);
 		mAudioPlayData.audio_buf = NULL;
 		return;
 	}
 
-	mAudioPlayData.audio_played_len = 0; // reset
+	mAudioPlayData.prepare();
 	SDL_PauseAudio(0);   // 开始播放音频，0表示取消暂停
 
 	// Wait till the audio playback finishes
 	// ...
-	SDL_Delay(1000);
+	SDL_Delay(2000);
 
 	SDL_CloseAudio();    // 关闭音频设备
 	SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
