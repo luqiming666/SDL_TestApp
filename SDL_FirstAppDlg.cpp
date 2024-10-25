@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "SDL.h"
+#include "audiotest.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -250,8 +251,18 @@ void audio_callback(void* userdata, Uint8* stream, int len)
 	pData->audio_played_len += len;
 }
 
+#define _TEST_jakebesworth_
+// Many thanks to https://github.com/jakebesworth/Simple-SDL2-Audio
+// 注意：编译.c文件时，单独设置“属性”不要使用预编译头
+// Win10：重新定义 #define SDL_AUDIO_ALLOW_CHANGES (SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | SDL_AUDIO_ALLOW_CHANNELS_CHANGE)
+
 void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 {
+#ifdef _TEST_jakebesworth_	
+	test_audio_main();
+	return;
+#endif
+
 	mSrcFile = _T("D:\\Media\\Bomb.wav");
 	if (mSrcFile.IsEmpty()) return;
 
@@ -282,8 +293,8 @@ void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
 
 	// Wait till the audio playback finishes
 	// ...
+	SDL_Delay(1000);
 
-	//SDL_CloseAudio();    // 关闭音频设备
-	//SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
-	
+	SDL_CloseAudio();    // 关闭音频设备
+	SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
 }
