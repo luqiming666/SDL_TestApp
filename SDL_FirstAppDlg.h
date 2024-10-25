@@ -4,6 +4,11 @@
 
 #pragma once
 
+struct AudioPlaybackData {
+	uint8_t* audio_buf;
+	uint32_t audio_buf_len;
+	uint32_t audio_played_len;
+};
 
 // CSDLFirstAppDlg 对话框
 class CSDLFirstAppDlg : public CDialogEx
@@ -26,6 +31,9 @@ protected:
 	HICON m_hIcon;
 	CString mSrcFile;
 
+	// Audio
+	AudioPlaybackData mAudioPlayData;
+
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -38,4 +46,5 @@ public:
 	afx_msg void OnBnClickedButtonCreateWnd();
 	afx_msg void OnBnClickedButtonBrowse();
 	afx_msg void OnBnClickedButtonShowPic();
+	afx_msg void OnBnClickedButtonPlayAudio();
 };

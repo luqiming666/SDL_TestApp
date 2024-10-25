@@ -51,8 +51,6 @@ END_MESSAGE_MAP()
 
 // CSDLFirstAppDlg 对话框
 
-
-
 CSDLFirstAppDlg::CSDLFirstAppDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_SDL_FIRSTAPP_DIALOG, pParent)
 	, mSrcFile(_T(""))
@@ -74,6 +72,7 @@ BEGIN_MESSAGE_MAP(CSDLFirstAppDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_CREATE_WND, &CSDLFirstAppDlg::OnBnClickedButtonCreateWnd)
 	ON_BN_CLICKED(IDC_BUTTON_BROWSE, &CSDLFirstAppDlg::OnBnClickedButtonBrowse)
 	ON_BN_CLICKED(IDC_BUTTON_SHOW_PIC, &CSDLFirstAppDlg::OnBnClickedButtonShowPic)
+	ON_BN_CLICKED(IDC_BUTTON_PLAY_AUDIO, &CSDLFirstAppDlg::OnBnClickedButtonPlayAudio)
 END_MESSAGE_MAP()
 
 
@@ -118,7 +117,7 @@ BOOL CSDLFirstAppDlg::OnInitDialog()
 		}
 	}
 
-	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
 		std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
 		return FALSE;
 	}
@@ -199,8 +198,11 @@ void CSDLFirstAppDlg::OnBnClickedButtonBrowse()
 
 void CSDLFirstAppDlg::OnBnClickedButtonShowPic()
 {
-	mSrcFile = _T("D:\\a.bmp");
-	if (mSrcFile.IsEmpty()) return;
+	//mSrcFile = _T("D:\\a.bmp");
+	if (mSrcFile.IsEmpty()) {
+		AfxMessageBox("Please select an image file.");
+		return;
+	}
 
 	SDL_Surface* pPicSurface = SDL_LoadBMP((LPCTSTR)mSrcFile); // 加载图片  
 	if (pPicSurface == NULL) {
@@ -217,7 +219,8 @@ void CSDLFirstAppDlg::OnBnClickedButtonShowPic()
 
 	// 获取窗口对应的surface 
 	SDL_Surface* pWndSurface = SDL_GetWindowSurface(window);
-	SDL_BlitSurface(pPicSurface, NULL, pWndSurface, NULL);
+	//SDL_BlitSurface(pPicSurface, NULL, pWndSurface, NULL);
+	SDL_BlitScaled(pPicSurface, NULL, pWndSurface, NULL);
 	SDL_UpdateWindowSurface(window);
 
 	SDL_DestroyWindow(window);
@@ -225,4 +228,62 @@ void CSDLFirstAppDlg::OnBnClickedButtonShowPic()
 
 void CSDLFirstAppDlg::OnBnClickedButtonCreateWnd()
 {
+}
+
+void audio_callback(void* userdata, Uint8* stream, int len) 
+{
+	AudioPlaybackData* pData = (AudioPlaybackData*)userdata;
+
+	if (pData->audio_played_len > pData->audio_buf_len) return;
+
+	// 从音频缓冲区复制数据到播放流
+	Uint32 remaining_len = pData->audio_buf_len - pData->audio_played_len;
+	Uint32 copy_len = (len > remaining_len) ? remaining_len : len;
+	memcpy(stream, pData->audio_buf + pData->audio_played_len, copy_len);
+
+	// 如果还有剩余数据，需要进行适当处理，比如填充静音数据
+	if (copy_len < len) {
+		memset(stream + copy_len, 0, len - copy_len);
+	}
+
+	// 记录已经播放的数据量
+	pData->audio_played_len += len;
+}
+
+void CSDLFirstAppDlg::OnBnClickedButtonPlayAudio()
+{
+	mSrcFile = _T("D:\\Media\\Bomb.wav");
+	if (mSrcFile.IsEmpty()) return;
+
+	SDL_AudioSpec audio_spec;
+	if (SDL_LoadWAV((LPCTSTR)mSrcFile, &audio_spec, &mAudioPlayData.audio_buf, &mAudioPlayData.audio_buf_len) == NULL) {
+		std::cout << "Failed to load audio file: " << SDL_GetError() << std::endl;
+		return;
+	}
+
+	SDL_AudioSpec wanted_spec;
+	wanted_spec.freq = 44100;    // 采样频率，常见的有44100Hz
+	wanted_spec.format = AUDIO_S16SYS;   // 音频格式，S16SYS表示有符号16位整数，系统字节序
+	wanted_spec.channels = 2;    // 声道数，如立体声为2
+	wanted_spec.silence = 0;     // 静音值
+	wanted_spec.samples = 1024;  // 音频缓冲区的样本数量
+	wanted_spec.callback = audio_callback; // 音频回调函数
+	wanted_spec.userdata = &mAudioPlayData; // 用户数据
+
+	if (SDL_OpenAudio(&wanted_spec, &audio_spec) < 0) {
+		std::cout << "Failed to open audio device: " << SDL_GetError() << std::endl;
+		SDL_FreeWAV(mAudioPlayData.audio_buf);
+		mAudioPlayData.audio_buf = NULL;
+		return;
+	}
+
+	mAudioPlayData.audio_played_len = 0; // reset
+	SDL_PauseAudio(0);   // 开始播放音频，0表示取消暂停
+
+	// Wait till the audio playback finishes
+	// ...
+
+	//SDL_CloseAudio();    // 关闭音频设备
+	//SDL_FreeWAV(mAudioPlayData.audio_buf);   // 释放音频缓冲区
+	
 }

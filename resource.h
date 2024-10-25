@@ -7,12 +7,12 @@
 #define IDS_ABOUTBOX                    101
 #define IDD_SDL_FIRSTAPP_DIALOG         102
 #define IDR_MAINFRAME                   128
-#define IDC_BUTTON1                     1000
 #define IDC_BUTTON_CREATE_WND           1000
 #define IDC_STATIC_SDLPIC               1001
 #define IDC_EDIT_SRC_FILE               1002
 #define IDC_BUTTON_BROWSE               1003
 #define IDC_BUTTON_SHOW_PIC             1004
+#define IDC_BUTTON_PLAY_AUDIO           1005
 
 // Next default values for new objects
 // 
